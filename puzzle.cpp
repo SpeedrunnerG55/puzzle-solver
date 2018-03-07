@@ -34,10 +34,11 @@ add -std=c++11 as a compiler option in g++ or gcc
 using namespace std;
 
 const short delay = 6;
-const short scrambleamount  = 3;
+const short scrambleamount  = 20;
 const short numberOfRoters  = 4;
 const short numberOfStates  = 8;
 const short numberOfButtons = 8;
+const short threshhold = (numberOfStates / 1.5) *  numberOfRoters;
 
 
 void sleep(short delay);
@@ -102,22 +103,25 @@ void delete_start_node(listPtr &start_ptr); //
 void purge_List       (listPtr &start_ptr); // deletes entire stack
 
 //TREE FUNCTIONS (this could be a class probably)
-void displayTree      (treePtr root, short currentdepth);  //recurcivly displays entire tree
-bool createTreeNode   (treePtr &current, short roters[numberOfRoters], short branch, effects effects);
+void displayTree        (treePtr root, short currentdepth);  //recurcivly displays entire tree
+bool createTreeNode     (treePtr &current, short roters[numberOfRoters], short branch, effects effects);
 short populateDecendance(treePtr current, effects effects, listPtr &start_ptr);
 short populateNextLevel (treePtr root,    effects effects, listPtr &start_ptr);
-bool checkRoters      (short roters[numberOfRoters]);
-void purge_Tree       (treePtr &root); // recurcivlry delets all of the nodes untill the tree is gone
+short checkRoters       (short roters[numberOfRoters]);
+void purge_Tree         (treePtr &root); // recurcivlry delets all of the nodes untill the tree is gone
 
 //ROTER FUNCTIONS (this could be a class probably)
 void scrambleRoters   (short (&roters)[numberOfRoters], effects effects);
-void button(short       (&roters)[numberOfRoters], effects effects, short choice);
-void randomiseEffects (effects &effects);
+void button           (short (&roters)[numberOfRoters], effects effects, short choice);
+void randomiseEffects (short (&roters)[numberOfRoters], effects &effects);
 void displayRoters    (short roters[numberOfRoters], short y);
 void displayEffects   (effects &effects, short x, short y);
 
 //keeps track of count (compleatly unesisary)
 short Stack_Count = 0;
+
+//keeps track of how manny nodes are made
+int level = 0;
 
 
 
@@ -154,13 +158,13 @@ int main(){
       cout << string(100,'\n');
       char menue = GetChar();
       switch (menue) {
-        case '1': editEffects(effects);           break;
-        case '2': editRoters(roters);             break;
-        case '3': randomiseEffects(effects);      break;
-        case '4': scrambleRoters(roters,effects); break;
-        case '5': pressButton(roters,effects);    break;
-        case '6': solve(roters,effects);          break;
-        case '9': running = false;                break;
+        case '1': editEffects(effects);             break;
+        case '2': editRoters(roters);               break;
+        case '3': randomiseEffects(roters,effects); break;
+        case '4': scrambleRoters(roters,effects);   break;
+        case '5': pressButton(roters,effects);      break;
+        case '6': solve(roters,effects);            break;
+        case '9': running = false;                  break;
         default:
         printLine('#');
         printLine(' ');
@@ -346,17 +350,23 @@ void pressButton (short (&roters)[numberOfRoters], effects effects){
 }
 
 void solve(short roters[numberOfRoters],effects effects){
-  if(checkRoters(roters)){
+  level = 0;
+  Stack_Count = 0;
+  if(checkRoters(roters) == 0){
     CenterString("wat, the puzzle solved itself...");
   }
   else{
     treePtr root = NULL;
     createTreeNode(root,roters,-1,effects);//set the initial conditions for root node and check if its alreaddy solved
     listPtr start_ptr = NULL;
-    Stack_Count = 0;
     short toList;
     do{
+      cout << " level " << level << '\r' << endl;
+      level++;
       toList = populateNextLevel(root, effects, start_ptr);
+      if(level > 8){
+        break;
+      }
     }while(toList == -1);
     //solved
     Display_List(start_ptr);
@@ -589,7 +599,12 @@ bool createTreeNode(treePtr &current, short roters[numberOfRoters], short branch
   }
   if(branch != -1){ //dont apply button affects to root
     button(current ->roters,effects,branch); //aply button effects
-    if(checkRoters(current ->roters)){
+    if(checkRoters(current ->roters) > threshhold){ // if too far from solution remove it
+      delete current;
+      current = NULL;
+      return false;
+    }
+    if(checkRoters(current ->roters) == 0){
       return true; //checks if all roters are 0 if so solution is found
     }
   }
@@ -600,6 +615,7 @@ bool createTreeNode(treePtr &current, short roters[numberOfRoters], short branch
   return false;
 }
 
+/* purges the entire tree */
 void purge_Tree(treePtr &root){
   if(root != NULL){ //check to see if tree or node is empty
     for(short i = 0; i < numberOfButtons; i++){//goes to each decendant node and calls this function of it as if it where root
@@ -619,15 +635,22 @@ void purge_Tree(treePtr &root){
 
 // ROTER FUNCTIONS
 
-bool checkRoters(short roters[numberOfRoters]){
-  return(!(roters[0] || roters[1] || roters[2] || roters[3]));
+short checkRoters(short roters[numberOfRoters]){
+  short sum = 0;
+  for(short i = 0; i < numberOfRoters; i++){
+    sum +=(numberOfStates/2) - abs((numberOfStates/2) - roters[i]);
+  }
+  return(sum);
 }
 
 void sleep(short delay){
   this_thread::sleep_for(chrono::milliseconds(delay));
 }
 
-void randomiseEffects(effects &effects){
+void randomiseEffects(short (&roters)[numberOfRoters],effects &effects){
+  //clear any previous rotter settup because not doing so may create an unsolvable puzzle
+  memset(roters,0,sizeof(roters));
+
   for(short i = 0; i < numberOfRoters; i++){
     for(short j = 0; j <numberOfButtons; j++){
       effects.change[i][j] = rand() % 3 - 1;
