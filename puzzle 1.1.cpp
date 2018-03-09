@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 
 //for tolower()
 #include <ctype.h>
@@ -41,17 +42,6 @@ const short numberOfButtons = 8;
 const short threshhold = (numberOfStates / 1.5) *  numberOfRoters;
 
 
-void sleep(short delay);
-
-/* Struct to contain node information */
-struct treeNode;
-typedef treeNode *treePtr;
-struct treeNode {
-  short choice;
-  short roters[numberOfRoters];
-  treePtr choices[numberOfButtons]; // Pointers to children
-};
-
 /* Struct to contain node information */
 struct listNode;
 typedef listNode *listPtr;
@@ -76,6 +66,9 @@ string build(string sA, short sB, string sC) {
 //custom input function
 #define getInput(output,input) cout << "| " << output << " >"; cin>>input
 
+//sleep function
+void sleep(int delay);
+
 //MAIN FUNCTIONS
 void displayPuzzle(short roters[numberOfRoters], effects &effects);
 void dsiplayMenue (short roters[numberOfRoters], effects effects);
@@ -85,7 +78,7 @@ void editEffects  (effects &effects);
 void pressButton  (short (&roters)[numberOfRoters], effects effects);
 
 //custom graphical functions (this could be a class probably)
-const short display_Width = 60;
+const short display_Width = 70;
 void printMultiString(string strArray[],short sizeOfStrArray);
 void printLong       (string longString);
 void displayMenue    (string title, string discription, string options[],short sizeofOptions);
@@ -102,32 +95,19 @@ void add_start_node   (listPtr &start_ptr, listPtr temp1);
 void delete_start_node(listPtr &start_ptr); //
 void purge_List       (listPtr &start_ptr); // deletes entire stack
 
-//TREE FUNCTIONS (this could be a class probably)
-void displayTree        (treePtr root, short currentdepth);  //recurcivly displays entire tree
-bool createTreeNode     (treePtr &current, short roters[numberOfRoters], short branch, effects effects);
-short populateDecendance(treePtr current, effects effects, listPtr &start_ptr);
-short populateNextLevel (treePtr root,    effects effects, listPtr &start_ptr);
-short checkRoters       (short roters[numberOfRoters]);
-void purge_Tree         (treePtr &root); // recurcivlry delets all of the nodes untill the tree is gone
-
 //ROTER FUNCTIONS (this could be a class probably)
 void scrambleRoters   (short (&roters)[numberOfRoters], effects effects);
 void button           (short (&roters)[numberOfRoters], effects effects, short choice);
 void randomiseEffects (short (&roters)[numberOfRoters], effects &effects);
 void displayRoters    (short roters[numberOfRoters], short y);
 void displayEffects   (effects &effects, short x, short y);
+short checkRoters     (short roters[numberOfRoters]);
 
 //keeps track of count (compleatly unesisary)
 short Stack_Count = 0;
 
 //keeps track of how manny nodes are made
 int level = 0;
-
-
-
-
-
-
 
 
 //MAIN FUNCTIONS
@@ -349,39 +329,279 @@ void pressButton (short (&roters)[numberOfRoters], effects effects){
   cout << string(100,'\n');
 }
 
-void solve(short roters[numberOfRoters],effects effects){
-  level = 0;
-  Stack_Count = 0;
-  if(checkRoters(roters) == 0){
-    CenterString("wat, the puzzle solved itself...");
-  }
-  else{
-    treePtr root = NULL;
-    createTreeNode(root,roters,-1,effects);//set the initial conditions for root node and check if its alreaddy solved
-    listPtr start_ptr = NULL;
-    short toList;
-    do{
-      cout << " level " << level << '\r' << endl;
-      level++;
-      toList = populateNextLevel(root, effects, start_ptr);
-      if(level > 8){
-        break;
+void increment(short (&value)[numberOfButtons], short base[numberOfButtons]){
+  value[0]++;
+  for(int i = 0; i < numberOfButtons; i++){
+    if(i != numberOfButtons -1){
+      if(value[i] >= base[i]){
+        value[i] = 0;
+        value[i+1]++;
       }
-    }while(toList == -1);
-    //solved
-    Display_List(start_ptr);
-
-    purge_List(start_ptr);
-    purge_Tree(root);
-
-    string outString;
-    outString.append("* the Tree is Purged! *");
-    CenterString(string(outString.length(),'*'));
-    CenterString(outString);
-    CenterString(string(outString.length(),'*'));
-    CenterString("it is now save to close");
+    }
   }
 }
+
+bool arrayComp(short arg1[numberOfButtons], short arg2[numberOfButtons]){
+  for(unsigned int i = 0; i < numberOfButtons;i++){
+    if(arg1[i] < arg2[i] - 1){
+      return true;
+      break;
+    }
+  }
+  return false;
+}
+
+void display2dArrayByButton(short arg[numberOfButtons][numberOfRoters], short y, short x){
+  for(short i = 0; i < numberOfButtons; i++){
+    string outstring;
+    for(short j = 0; j < numberOfRoters; j++){
+      if(!(arg[i][j] < 0)){
+        outstring.push_back(' ');
+      }
+      if((i == y) && (j == x)){
+        outstring.push_back('[');
+      }
+      else{
+        outstring.push_back(' ');
+      }
+      outstring.append(to_string(arg[i][j]));
+      if(j < numberOfRoters - 1){
+        outstring.push_back(',');
+      }
+      if((i == y) && (j == x)){
+        outstring.push_back(']');
+      }
+      else{
+        outstring.push_back(' ');
+      }
+    }
+    CenterString(outstring);
+  }
+  printLine('-');
+}
+
+void display2dArrayByRoter(short arg[numberOfRoters][numberOfButtons]){
+  for(int i = 0; i < numberOfRoters; i++){
+    string outstring;
+    for(int j = 0; j < numberOfButtons; j++){
+      if(!(arg[i][j] < 0)){
+        outstring.push_back(' ');
+      }
+      outstring.append(to_string(arg[i][j]));
+      outstring.push_back(',');
+    }
+    CenterString(outstring);
+  }
+  printLine('-');
+}
+
+void display2dArrayByRoter(bool arg[numberOfRoters][numberOfButtons]){
+  for(int i = 0; i < numberOfRoters; i++){
+    string outstring;
+    for(int j = 0; j < numberOfButtons; j++){
+      if(!(arg[i][j] < 0)){
+        outstring.push_back(' ');
+      }
+      outstring.append(to_string(arg[i][j]));
+      outstring.push_back(',');
+    }
+    CenterString(outstring);
+  }
+  printLine('-');
+}
+
+void solve(short roters[numberOfRoters],effects effects){
+  printLine('#');
+  printLine(' ');
+  CenterString("Solve");
+  printLine(' ');
+  printLine('=');
+  printLine(' ');
+  CenterString("Settup Procedure...");
+
+  //find out which buttons effects each roter
+  printLong("find out which buttons effects each roter and save it to doesbuttoneffectroter[numberOfRoters][numberOfButtons] V ");
+
+  bool doesbuttoneffectroter[numberOfRoters][numberOfButtons];
+  memset(doesbuttoneffectroter,false,sizeof(doesbuttoneffectroter));
+  for(int i = 0; i < numberOfRoters; i++){
+    for(int j = 0; j < numberOfButtons; j++){
+      if(effects.change[i][j] != 0){
+        doesbuttoneffectroter[i][j] = true;
+      }
+      else{
+        doesbuttoneffectroter[i][j] = false;
+      }
+    }
+  }
+
+  display2dArrayByRoter(doesbuttoneffectroter);
+
+  //calculate the number of presses it takes to return the rotors to its original state.
+  printLong("calculate the number of presses it takes to return the rotors to its original state and save it to getback[numberOfRoters][numberOfButtons] V (this value is not used)");
+
+  short getback[numberOfRoters][numberOfButtons];
+  for(int i = 0; i < numberOfRoters; i++){
+    for(int j = 0; j < numberOfButtons; j++){
+      if(doesbuttoneffectroter[i][j]){
+        getback[i][j] = numberOfStates;
+      }
+      else{
+        getback[i][j] = -1;
+      }
+    }
+  }
+
+  display2dArrayByRoter(getback);
+
+  // find the amount of times each button must be pressed to turn each rotor to 0
+  printLong("find the amount of times each button must be pressed to turn each rotor to 0 and save it to numberOfPresses[numberOfRoters][numberOfButtons] V");
+
+  short numberOfPresses[numberOfRoters][numberOfButtons];
+  for(int i = 0; i < numberOfRoters; i++){
+    for(int j = 0; j < numberOfButtons; j++){
+      if(effects.change[i][j] > 0){
+        if(floor((numberOfStates - roters[i]) / effects.change[i][j]) == (numberOfStates - roters[i]) / effects.change[i][j]){
+          numberOfPresses[i][j] = (numberOfStates - roters[i]) / effects.change[i][j];
+        }
+        else{
+          numberOfPresses[i][j] = -1;
+        }
+      }
+      else if(effects.change[i][j] < 0){
+        if(floor(roters[i] / abs(effects.change[i][j])) == roters[i] / abs(effects.change[i][j])){
+          numberOfPresses[i][j] = roters[i] / abs(effects.change[i][j]);
+        }
+        else{
+          numberOfPresses[i][j] = -1;
+        }
+      }
+      else{
+        numberOfPresses[i][j] = -1;
+      }
+    }
+  }
+
+  display2dArrayByRoter(numberOfPresses);
+
+  printLong("declare base[numberOfButtons] and set all of its values to 0");
+
+  short base[numberOfButtons];
+  memset(base,0,sizeof(base));
+
+  printLong("declare amount[numberOfButtons][numberOfRoters] V and set all of its values to -1");
+
+  short amount[numberOfButtons][numberOfRoters];
+  memset(amount,-1,sizeof(amount));
+
+  display2dArrayByButton(amount,-1,-1);
+
+  printLong("remove douplicates and leading -1's while counting the amount each one has putting result into amount[numberOfButtons][numberOfRoters] V");
+
+  //remove douplicates and leading -1's while counting the amount each one has putting result into amount[numberOfButtons][numberOfRoters]
+  for(int j = 0; j < numberOfButtons; j++){
+    cout << " button  [" << j + 1 << "] ";
+    short check[numberOfRoters];
+    memset(check,-1,sizeof(check));
+    for(int i = 0; i < numberOfRoters; i++){
+      if(numberOfPresses[i][j] != -1){
+        check[i] = numberOfPresses[i][j];
+        bool duplicate = false;
+        for(int k = 0; k < i; k++){
+          if(numberOfPresses[i][j] == check[k]){
+            numberOfPresses[i][j] = -1;
+            duplicate = true;
+            break;
+          }
+        }
+        if(!duplicate){
+          cout << " " << numberOfPresses[i][j] << ",";
+          amount[j][base[j]] = numberOfPresses[i][j];
+          base[j]++;
+        }
+        else{
+          cout << "   ";
+        }
+      }
+      else{
+        cout << "   ";
+      }
+    }
+    cout << " ... base[" << j << "] = " << base[j] << endl;
+  }
+
+  display2dArrayByButton(amount,-1,-1);
+
+  short current[numberOfButtons];
+  memset(current,0,sizeof(current));
+
+  int solutionsfound = 0;
+
+  printLine(' ');
+  printLine('=');
+  printLine(' ');
+  CenterString("Looping Procedure...");
+
+  //really just a big forloop
+  while(arrayComp(current,base)){
+
+
+    //get a copy
+    short tempRoters[numberOfRoters];
+    for(int i = 0; i < numberOfRoters; i++){
+      tempRoters[i] = roters[i];
+    }
+
+    //do the buttons cor current configuration index
+    for(int i = 0; i < numberOfButtons; i++){
+
+      printLine('=');
+      CenterString("get copy of roters into tempRoters[numberOfRoters] V");
+      displayRoters(roters,-1);
+
+      string outstring;
+      printLine('-');
+      outstring.append("index values...");
+      LeftString(outstring); outstring.erase();
+      outstring.append("y axis    | i = "); outstring.append(to_string(i));
+      LeftString(outstring); outstring.erase();
+      outstring.append("x axis    | current["); outstring.append(to_string(i)); outstring.append("] = "); outstring.append(to_string(current[i]));
+      LeftString(outstring); outstring.erase();
+      printLine(' ');
+      outstring.append("normal values...");
+      LeftString(outstring); outstring.erase();
+      outstring.append("x axis limmit| base["); outstring.append(to_string(i)); outstring.append("] = "); outstring.append(to_string(base[i]));
+      LeftString(outstring); outstring.erase();
+      printLine('-');
+
+      //print array of amounts so i can see whats going on
+      display2dArrayByButton(amount,i,current[i]);
+
+      outstring.append("press |"); outstring.append(to_string(i + 1)); outstring.append("| amount["); outstring.append(to_string(i)); outstring.append("]] ^ times ");
+      LeftString(outstring); outstring.erase();
+      for(int j = 0; j < amount[i][current[i]]; j++){
+        outstring.append("[press] ");
+        button(tempRoters,effects,i);
+      }
+      printLong(outstring); outstring.erase();
+      displayRoters(tempRoters,-1);
+      sleep(20);
+      cout << string(100,'\n');
+    }
+    printLine('=');
+    CenterString("Check Roters");
+    if(checkRoters(tempRoters) == 0){
+      solutionsfound++;
+      CenterString("FOUND ONE! :D");
+    }
+    string outstring;
+    outstring.append("found "); outstring.append(to_string(solutionsfound));
+    LeftString(outstring);
+    increment(current,base);
+  }
+}
+
+
 
 
 
@@ -505,134 +725,6 @@ void purge_List(listPtr &start_ptr){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// TREE FUCNTIONS
-
-void displayNode(treePtr node,short currentdepth){
-  string outString;
-  outString.push_back('>');
-  outString.append(string(currentdepth * 2,' '));
-  outString.push_back(' ');
-  if(node != NULL){
-    outString.append(to_string(node ->choice + 1));
-  }
-  else{
-    outString.push_back('E');
-    cout << "boop";
-  }
-  LeftString(outString);
-}
-
-void displayTree(treePtr root, short currentdepth){
-  if(root != NULL){
-    displayNode(root,currentdepth);
-    currentdepth++;
-    if(root->choices[0] != NULL){
-      for(short i =0; i < numberOfButtons; i++){
-        displayTree(root->choices[i],currentdepth);
-      }
-    }
-  }
-}
-
-
-short populateNextLevel(treePtr root, effects effects, listPtr &start_ptr){
-  if(root -> choices[0] != NULL){ //checks for children nodes
-    treePtr temp1;
-    short toList;
-    for(short i =0; i < numberOfButtons; i++){
-      temp1 = root->choices[i];
-      toList = populateNextLevel(temp1,effects,start_ptr);
-      if(toList != -1){
-        //solved
-        listPtr listtemp1;
-        createlistNode(listtemp1,i);
-        add_start_node(start_ptr,listtemp1);
-        Stack_Count++;
-        return toList;
-      }
-    }
-    return toList;
-  }
-  else{
-    return populateDecendance(root,effects,start_ptr);
-  }
-}
-
-short populateDecendance(treePtr current, effects effects, listPtr &start_ptr){
-  for(short i = 0; i < numberOfButtons; i++){
-    if(createTreeNode(current ->choices[i],current->roters,i,effects)){
-      listPtr listtemp1;
-      createlistNode(listtemp1,i);
-      add_start_node(start_ptr,listtemp1);
-      Stack_Count++;
-      printLine('#');
-      printLine(' ');
-      CenterString("Found Solution!!!! :D");
-      return(i);
-    }
-  }
-  return -1;
-}
-
-bool createTreeNode(treePtr &current, short roters[numberOfRoters], short branch, effects effects){
-  current = new treeNode;
-  current ->choice = branch;
-  //copy the roters from parrent
-  for(short i = 0; i < numberOfRoters; i++){
-    current ->roters[i] = roters[i];
-  }
-  if(branch != -1){ //dont apply button affects to root
-    button(current ->roters,effects,branch); //aply button effects
-    if(checkRoters(current ->roters) > threshhold){ // if too far from solution remove it
-      delete current;
-      current = NULL;
-      return false;
-    }
-    if(checkRoters(current ->roters) == 0){
-      return true; //checks if all roters are 0 if so solution is found
-    }
-  }
-  //asign children pointers NULL
-  for(short i = 0; i < numberOfButtons; i++){
-    current ->choices[i] = NULL;
-  }
-  return false;
-}
-
-/* purges the entire tree */
-void purge_Tree(treePtr &root){
-  if(root != NULL){ //check to see if tree or node is empty
-    for(short i = 0; i < numberOfButtons; i++){//goes to each decendant node and calls this function of it as if it where root
-      purge_Tree(root->choices[i]); //recursion
-    }
-    //when node has no children, it is safe to delete, even though it is still called root
-    delete root;
-    root = NULL;
-  }
-}
-
-
-
-
-
-
-
 // ROTER FUNCTIONS
 
 short checkRoters(short roters[numberOfRoters]){
@@ -643,7 +735,7 @@ short checkRoters(short roters[numberOfRoters]){
   return(sum);
 }
 
-void sleep(short delay){
+void sleep(int delay){
   this_thread::sleep_for(chrono::milliseconds(delay));
 }
 

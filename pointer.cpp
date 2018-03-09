@@ -23,19 +23,19 @@ void swapbyreference(numPtr &source, numPtr &destination){
 }
 
 void deleteNum(numPtr num){
-  cout << "p before delete -> " << num << " " << num ->number << endl;
+  cout << " p before delete -> " << num << " " << num ->number << endl;
   delete num;
-  cout << "p after delete  -> " << num << " " << num ->number << endl;
+  cout << " p after delete  -> " << num << " " << num ->number << endl;
   num = NULL;
-  cout << "p after null    -> " << num;
+  cout << " p after null    -> " << num << endl << endl;
 }
 
 void deleteNumbyreference(numPtr &num){
-  cout << "p before delete -> " << num << " " << num ->number << endl;
+  cout << " p before delete -> " << num << " " << num ->number << endl;
   delete num;
-  cout << "p after delete  -> " << num << " " << num ->number << endl;
+  cout << " p after delete  -> " << num << " " << num ->number << endl;
   num = NULL;
-  cout << "p after null    -> " << num;
+  cout << " p after null    -> " << num << endl << endl;
 }
 
 
@@ -66,7 +66,7 @@ int main(){
 
   cout << "after delete by reference" << endl << endl;
 
-  cout << " p1 -> " << num1 << " " << num1 ->number << endl << endl;
+  cout << " p1 -> " << num1 << endl;
 
 
   return 0;
