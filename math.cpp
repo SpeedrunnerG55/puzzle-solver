@@ -9,30 +9,78 @@ char lookup(int arg){
   return table[arg];
 }
 
-void displayArray(int value[width],int base[width]){
-  cout << "V >";
+void displayArray(int value[width], int check){
   for(int i = 0; i < width; i++){
-    cout << lookup(value[i]) << ',';
+    if(i == check){
+      cout << "[";
+    }
+    else{
+      cout << " ";
+    }
+    cout << lookup(value[i]);
+    if(i == check){
+      cout << "]";
+    }
+    else{
+      cout << " ";
+    }
+    if(i != width - 1){
+      cout << ",";
+    }
   }
   cout << endl;
-  cout << string(width * 2 + 3,'-');
-  cout << endl;
-  cout << "B >";
-  for(int i = 0; i < width; i++){
-    cout << lookup(base[i]) << ',';
-  }
-  cout << endl << endl;
-  getchar();
 }
 
 void increment(int (&value)[width], int base[width]){
+  cout << string(width * 4 + 4,'=') << endl;
+  cout << " start incrementing " << endl;
   value[0]++;
+  cout << " increment first term" << endl;
+  displayArray(value,0);
+  cout << string(width * 4 + 4,'-') << endl;
+  getchar();
+  cout << string(100,'\n');
+  cout << " Start loop " << endl;
+  cout << string(width * 4 + 4,'~') << endl;
   for(int i = 0; i < width; i++){
-    if(i != width -1){
-      if(value[i] >= base[i]){
+    cout << " is value[" << i << "]" << endl;
+    displayArray(value,i);
+    cout << " >= to base[" << i << "] " << endl;
+    displayArray(base,i);
+
+    cout << string(width * 4 + 4,'-') << endl;
+    getchar();
+    cout << string(100,'\n');
+    if(value[i] >= base[i]){
+      cout << " yes" << endl;
+      cout << " is this not the last term? " << endl;
+      cout << string(width * 4 + 4,'+') << endl;
+      getchar();
+      cout << string(100,'\n');
+      if(i != width -1){
+        cout << " yes" << endl;
+        cout << "set value["<< i << "] to 0" << endl;
         value[i] = 0;
+        displayArray(value,i);
+        cout << "increment value[" << i+1 << "]" << endl;
         value[i+1]++;
+        displayArray(value,i+1);
+        cout << string(width * 4 + 4,'+') << endl;
+        getchar();
+        cout << string(100,'\n');
       }
+      else{
+        cout << " no" << endl;
+        cout << string(width * 4 + 4,'+') << endl;
+      }
+    }
+    else{
+      cout << " no" << endl;
+      cout << " exit loop " << endl;
+      cout << string(width * 4 + 4,'~') << endl;
+      cout << " finished incrementing " << endl;
+      cout << string(width * 4 + 4,'=') << endl;
+      return;
     }
   }
 }
@@ -50,10 +98,20 @@ bool arrayComp(int arg1[width], int arg2[width]){
 int main(){
   //needlessly complicated for loop
   int current[width] {0,0,0,0,0};
-  int base[width] {2,10,16,8,3};
+  int base[width] {4,4,4,0,3};
+  cout << string(100,'\n');
   while(arrayComp(current,base)){
-    displayArray(current,base);
+    displayArray(current,-1);
+    displayArray(base,-1);
+    cout << string(width * 4 + 4,'-') << endl;
+    getchar();
+    cout << string(100,'\n');
     increment(current,base);
+    displayArray(current,-1);
+    displayArray(base,-1);
+    cout << string(width * 4 + 4,'-') << endl;
+    getchar();
+    cout << string(100,'\n');
   }
   return 0;
 }
