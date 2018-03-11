@@ -34,7 +34,7 @@ add -std=c++11 as a compiler option in g++ or gcc
 
 using namespace std;
 
-const short delay = 6;
+const short delay = 50;
 const short scrambleamount  = 20;
 const short numberOfRoters  = 4;
 const short numberOfStates  = 8;
@@ -54,20 +54,11 @@ struct effects{
   short change[numberOfRoters][numberOfButtons]; // 0 1 or -1 for each roter for each button
 };
 
-//combine string and short and string
-string build(string sA, short sB, string sC) {
-  if(sB != -1) { //none of the values will ever be -1 so use it as a null value
-    sA.append(to_string(sB));
-  }
-  sA.append(sC);
-  return sA;
-}
-
-//custom input function
-#define getInput(output,input) cout << "| " << output << " >"; cin>>input
-
-//sleep function
+//misc function
 void sleep(int delay);
+char lookup(int arg);
+
+void incrementArray(short (&value)[numberOfButtons], short base[numberOfButtons]);
 
 //MAIN FUNCTIONS
 void displayPuzzle(short roters[numberOfRoters], effects &effects);
@@ -76,6 +67,10 @@ void solve        (short roters[numberOfRoters], effects effects);
 void editRoters   (short roters[numberOfRoters]);
 void editEffects  (effects &effects);
 void pressButton  (short roters[numberOfRoters], effects effects);
+
+///SUB MAIN
+void simulation();
+void manual();
 
 //custom graphical functions (this could be a class probably)
 const short display_Width = 70;
@@ -90,6 +85,7 @@ void CenterString    (string str);
 //LIST FUNCTIONS (this could be a class probably)
 bool empty            (listPtr start_ptr); //checks if stack is empty
 void Display_List     (listPtr start_ptr, int count); //displays whole list
+void Display_Smallest (listPtr start_ptr);  //displays node with smallest value
 void createlistNode   (listPtr &temp1, short solution[numberOfButtons]);
 void add_start_node   (listPtr &start_ptr, listPtr temp1);
 void delete_start_node(listPtr &start_ptr); //
@@ -102,11 +98,48 @@ void randomiseEffects (short roters[numberOfRoters], effects &effects);
 void displayRoters    (short roters[numberOfRoters], short y);
 void displayEffects   (effects &effects, short x, short y);
 short checkRoters     (short roters[numberOfRoters]);
+void resetEffects     (effects &effects);
+void resetRoters      (short roters[numberOfRoters]);
 
 
-//MAIN FUNCTIONS
-
+/*  MAIN  */
 int main(){
+
+  //menue settup
+  string options[]= {"1 manual solve","2 simulation","9 Quit"};
+  string discription = "Solve the roter puzzle!";
+
+  displayMenue("Puzzle Solver",discription,options,sizeof(options));
+
+
+  bool running = true;
+  do{
+    if(KeyHit()){
+      cout << string(100,'\n');
+      char menue = GetChar();
+      switch (menue) {
+        case '1': manual();        break;
+        case '2': simulation();    break;
+        case '9': running = false; break;
+        default:
+        printLine('#');
+        printLine(' ');
+        CenterString("invalid input");
+        string key;
+        key.push_back(menue);
+        CenterString(key); // << shows
+      }
+      displayMenue("Puzzle Solver",discription,options,sizeof(options));
+    }
+  }while(running);
+  CenterString("Bye!");
+  printLine('#');
+  return 0;
+}
+
+/*  simulation menue to simulate the puzzle  */
+void simulation(){
+
   srand(time(NULL));
 
   effects effects;
@@ -117,13 +150,12 @@ int main(){
   memset(roters,0,sizeof(roters));
   //removes uninitialized data
 
-
   //menue settup
-  string options[]= {"1 edit effects","2 edit roters","3 Randomise effects","4 Scramble puzzle","5 Press Button","6 Solve Puzzle","9 Quit"};
-  string discription = "Configure and solve the roter puzzle! (be sure not to close the program while solving and only close it when it says its safe to close)";
+  string options[]= {"1 edit effects","2 Randomise effects","3 Scramble puzzle","4 Press Button","5 auto solve","9 Quit"};
+  string discription = "Simulate the puzzle right here in software! scramble and generate effects on the fly for you or me to solve (be sure not to close the program while solving and only close it when it says its safe to close)";
+  string title = "Simulation";
 
-  displayMenue("Puzzle Solver",discription,options,sizeof(options));
-
+  displayMenue(title,discription,options,sizeof(options));
   displayPuzzle(roters,effects);
 
   bool running = true;
@@ -133,11 +165,10 @@ int main(){
       char menue = GetChar();
       switch (menue) {
         case '1': editEffects(effects);             break;
-        case '2': editRoters(roters);               break;
-        case '3': randomiseEffects(roters,effects); break;
-        case '4': scrambleRoters(roters,effects);   break;
-        case '5': pressButton(roters,effects);      break;
-        case '6': solve(roters,effects);            break;
+        case '2': randomiseEffects(roters,effects); break;
+        case '3': scrambleRoters(roters,effects);   break;
+        case '4': pressButton(roters,effects);      break;
+        case '5': solve(roters,effects);            break;
         case '9': running = false;                  break;
         default:
         printLine('#');
@@ -147,13 +178,73 @@ int main(){
         key.push_back(menue);
         CenterString(key); // << shows
       }
-      displayMenue("Main Menue",discription,options,sizeof(options));
+      displayMenue(title,discription,options,sizeof(options));
       displayPuzzle(roters,effects);
     }
   }while(running);
-  CenterString("Bye!");
-  printLine('#');
-  return 0;
+  cout << string(100,'\n');
+}
+
+/*  manual, used for solving the actual puzzle  */
+void manual(){
+  srand(time(NULL));
+
+  effects effects;
+  memset(effects.change,0,sizeof(effects.change));
+  //removes uninitialized data
+
+  short roters[numberOfRoters];
+  memset(roters,0,sizeof(roters));
+  //removes uninitialized data
+
+  //instructions
+  printLine('=');
+  CenterString("Press each button and record its affects on each roter");
+  editEffects(effects);
+  printLine('=');
+  CenterString("Record the state of the roters");
+  editRoters(roters);
+
+  //menue settup
+  string options[]= {"1 Press Button","2 auto solve","3 reset puzzle","9 Quit"};
+  string discription = "Configure and solve the roter puzzle! (be sure not to close the program while solving and only close it when it says its safe to close)";
+  string title = "Puzzle Solver";
+
+  displayMenue(title,discription,options,sizeof(options));
+  displayPuzzle(roters,effects);
+
+  bool running = true;
+  do{
+    if(KeyHit()){
+      cout << string(100,'\n');
+      char menue = GetChar();
+      switch (menue) {
+        case '1': pressButton(roters,effects); break;
+        case '2': solve(roters,effects);       break;
+        case '3':
+        resetEffects(effects);
+        printLine('=');
+        CenterString("Press each button and record its affects on each roter");
+        editEffects(effects);
+        resetRoters(roters);
+        printLine('=');
+        CenterString("Record the state of the roters");
+        editRoters(roters);
+        break;
+        case '9': running = false;             break;
+        default:
+        printLine('#');
+        printLine(' ');
+        CenterString("invalid input");
+        string key;
+        key.push_back(menue);
+        CenterString(key); // << shows
+      }
+      displayMenue(title,discription,options,sizeof(options));
+      displayPuzzle(roters,effects);
+    }
+  }while(running);
+  cout << string(100,'\n');
 }
 
 /* displays a menue with options and controlls */
@@ -166,15 +257,17 @@ void displayMenue(string title, string discription, string options[],short sizeo
   printMultiString(options,sizeofOptions);
 }
 
+/* edit the state of the roters manually  */
 void editRoters(short roters[numberOfRoters]){
   bool edditing = true;
   short y = 0;
 
   //menue settup
-  string options[]= {"W move up","S move down","A decrement","D increment","9 quit"};
+  string options[]= {"W up","S down","A decrement","D increment","9 quit"};
   string discription = "Edditing roters, use the W and S keys to move selection up and down and A and D to increment and decrement the state";
+  string title = "Roter edditor";
 
-  displayMenue("Roter edditor",discription,options,sizeof(options));
+  displayMenue(title,discription,options,sizeof(options));
   displayRoters(roters,y);
 
   do{
@@ -218,22 +311,23 @@ void editRoters(short roters[numberOfRoters]){
         key.push_back(menue);
         CenterString(key);
       }
-      displayMenue("Roter edditor",discription,options,sizeof(options));
+      displayMenue(title,discription,options,sizeof(options));
       displayRoters(roters,y);
     }
   }while(edditing);
   cout << string(100,'\n');
 }
 
+/* edit the state of the effects manually  */
 void editEffects (effects &effects){
   bool edditing = true;
   short x = 0, y = 0;
 
   //menue settup
-  string options[]= {"1 [0]"," 2 [1]"," 3 [-1]","W move up","A move left","S move down","D move right","9 quit"};
+  string options[]= {"1 [0]"," 2 [1]"," 3 [-1]","W up","A left","S down","D right","9 quit"};
   string discription = "Edditing Effects, use the W and S keys to move selection up and down, and A and D to move selection left and right";
-
-  displayMenue("Roter edditor",discription,options,sizeof(options));
+  string title = "Effects edditor";
+  displayMenue(title,discription,options,sizeof(options));
   displayEffects(effects,x,y);
 
   do{
@@ -280,24 +374,23 @@ void editEffects (effects &effects){
         key.push_back(menue);
         CenterString(key); // << shows
       }
-      displayMenue("Roter edditor",discription,options,sizeof(options));
+      displayMenue(title,discription,options,sizeof(options));
       displayEffects(effects,x,y);
     }
   }while(edditing);
   cout << string(100,'\n');
 }
 
+/* press the buttons as if where the puzzle with the number keys  */
 void pressButton (short roters[numberOfRoters], effects effects){
 
   //menue settup
   string discription = "Manually solve";
   string options[]= {"use numbers for buttons","Esc to exit"};
+  string title = "Button presser";
 
-  displayMenue("Button presser",discription,options,sizeof(options));
+  displayMenue(title,discription,options,sizeof(options));
   displayPuzzle(roters,effects);
-
-  //15 lookup characters
-  char table[16] = {'1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
 
   bool solving = true;
   do{
@@ -306,109 +399,46 @@ void pressButton (short roters[numberOfRoters], effects effects){
       printLine('#');
       printLine(' ');
       char menue = GetChar();
-      menue = tolower(menue);
+      menue = toupper(menue);
       if(menue == KEY_ESCAPE){
         return;
       }
       for(short i = 0; i < 16; i++){
-        if((menue == table[i]) && i < numberOfButtons){
+        if((menue == lookup(i)) && i < numberOfButtons){
           button(roters,effects,i);
         }
       }
       //print menue
-      displayMenue("Button presser",discription,options,sizeof(options));
+      displayMenue(title,discription,options,sizeof(options));
       displayPuzzle(roters,effects);
     }
   }while(solving);
   cout << string(100,'\n');
 }
 
-void display2dArrayByButton(short arg[numberOfButtons][numberOfRoters], short y, short x){
-  for(short i = 0; i < numberOfButtons; i++){
-    string outstring;
-    for(short j = 0; j < numberOfRoters; j++){
-      if(!(arg[i][j] < 0)){
-        outstring.push_back(' ');
-      }
-      if((i == y) && (j == x)){
-        outstring.push_back('[');
-      }
-      else{
-        outstring.push_back(' ');
-      }
-      outstring.append(to_string(arg[i][j]));
-      if(j < numberOfRoters - 1){
-        outstring.push_back(',');
-      }
-      if((i == y) && (j == x)){
-        outstring.push_back(']');
-      }
-      else{
-        outstring.push_back(' ');
-      }
-    }
-    CenterString(outstring);
-  }
-  printLine('-');
-}
-
-void display2dArrayByRoter(short arg[numberOfRoters][numberOfButtons]){
-  for(int i = 0; i < numberOfRoters; i++){
-    string outstring;
-    for(int j = 0; j < numberOfButtons; j++){
-      if(!(arg[i][j] < 0)){
-        outstring.push_back(' ');
-      }
-      outstring.append(to_string(arg[i][j]));
-      outstring.push_back(',');
-    }
-    CenterString(outstring);
-  }
-  printLine('-');
-}
-
-void display2dArrayByRoter(bool arg[numberOfRoters][numberOfButtons]){
-  for(int i = 0; i < numberOfRoters; i++){
-    string outstring;
-    for(int j = 0; j < numberOfButtons; j++){
-      if(!(arg[i][j] < 0)){
-        outstring.push_back(' ');
-      }
-      outstring.append(to_string(arg[i][j]));
-      outstring.push_back(',');
-    }
-    CenterString(outstring);
-  }
-  printLine('-');
-}
-
+/*  used to lookup character for input and output text if needed  */
 char lookup(int arg){
-  char table[36] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'};
+  char table[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'};
   return table[arg];
 }
 
-void displayArray(short value[numberOfButtons]){
-  cout << "[ ";
-  for(int i = 0; i < numberOfButtons; i++){
-    cout << lookup(value[i]);
-    if(i != numberOfButtons - 1){
-      cout << ",";
-    }
-  }
-  cout << " ]";
-  cout << endl;
-}
-
+/*  tests the sequence of buttons and returns how close they where to the solution  */
 short testSequence(short sequence[numberOfButtons], short roters[numberOfRoters], effects effects){
+  //get a coppy
+  short copy[numberOfRoters];
+  for(int j = 0; j < numberOfRoters; j++){
+    copy[j] = roters[j];
+  }
   for(short i = 0; i < numberOfButtons; i++){
     for(short j = 0; j < sequence[i]; j++){
-      button(roters,effects,i);
+      button(copy,effects,i);
     }
   }
-  return checkRoters(roters);
+  return checkRoters(copy);
 }
 
-void increment(short (&value)[numberOfButtons], short base[numberOfButtons]){
+/*  increments array of values with arbitrary base values  */
+void incrementArray(short (&value)[numberOfButtons], short base[numberOfButtons]){
   value[0]++;
   for(int i = 0; i < numberOfButtons; i++){
     if(value[i] >= base[i]){
@@ -423,6 +453,7 @@ void increment(short (&value)[numberOfButtons], short base[numberOfButtons]){
   }
 }
 
+/*  compares array 1 to 2 and returns if it is greater than it -1  */
 bool arrayComp(short arg1[numberOfButtons], short arg2[numberOfButtons]){
   for(unsigned int i = 0; i < numberOfButtons;i++){
     if(arg1[i] < arg2[i] - 1){
@@ -433,8 +464,9 @@ bool arrayComp(short arg1[numberOfButtons], short arg2[numberOfButtons]){
   return false;
 }
 
+/*  solves the puzzle displaying all and most efficient solution  */
 void solve(short roters[numberOfRoters],effects effects){
-
+  int startTime = time(NULL);
   //keeps track of count (compleatly unesisary)
   int stack_Count = 0;
 
@@ -444,9 +476,8 @@ void solve(short roters[numberOfRoters],effects effects){
   //declare bases set them all to max to do exaustive search
   short base[numberOfButtons];
   memset(base,0,sizeof(base));
-
   //establish all non 0 bases makes it a tad faster in some cases
-  for(int i = 0; i < numberOfButtons; i++){
+  for(int i = 0; i < numberOfRoters; i++){
     for(int j = 0; j < numberOfButtons; j++){
       if(effects.change[i][j] != 0){
         base[j] = numberOfStates;
@@ -454,35 +485,41 @@ void solve(short roters[numberOfRoters],effects effects){
     }
   }
 
-
-
+  //just a really big for loop
   //set counter to 0
   short current[numberOfButtons];
   memset(current,0,sizeof(current));
-  //just a really big for loop
+  CenterString("Building list, dont close untill finished");
+  //begin loop
   do {
-    //get a coppy
-    short copy[numberOfRoters];
-    for(int j = 0; j < numberOfRoters; j++){
-      copy[j] = roters[j];
-    }
     //test sequence if it passes add  it to list
-    if(testSequence(current,copy,effects) == 0){
+    if(testSequence(current,roters,effects) == 0){
       stack_Count++;
       listPtr temp1;
       createlistNode(temp1,current);
       add_start_node(start_ptr,temp1);
-      cout << " found "<< stack_Count;
       //progress bar
-      short bar = (current[numberOfButtons - 1] * numberOfButtons + current[numberOfButtons - 2]) / 2;
-      short total = (numberOfButtons * numberOfButtons) / 2;
+      cout << "| found " << setw(6) << stack_Count;
+      short bar = ((current[numberOfButtons - 1] * numberOfButtons + current[numberOfButtons - 2]) * 3/4);
+      short total = ((numberOfButtons * numberOfButtons) * 3/4);
       cout << "[" << string(bar,'#');
-      cout << string(total - bar,' ') << "]" << '\r';
+      cout << string(total - bar,' ') << "]" << bar << "|" << total << '\r';
     }
-    increment(current,base);
+    //increment counter
+    incrementArray(current,base);
+    //test counter
   } while(arrayComp(current,base));
+
+
+
   Display_List(start_ptr, stack_Count);
+  Display_Smallest(start_ptr);
+
   purge_List(start_ptr);
+  CenterString("execution time");
+  CenterString(to_string(time(NULL)-startTime));
+  CenterString("seconds");
+  CenterString("it is now safe to close");
 }
 
 
@@ -495,27 +532,20 @@ bool empty(listPtr start_ptr){
 
 /* Displays contents of current node that temp1 is pointing at */
 void displayInfo(listPtr output){
-  displayArray(output ->solution);
-}
-
-void displayCount(int count){
-  CenterString(build("solutions found ",count,""));
-}
-
-//title information for item of list
-void displayHeadder(){
-  printLine('=');
-  CenterString("solution Stack");
-  //initialise output
-  string outString;
-  //build output
-  //display output
-  CenterString(outString);
+  string outstring;
+  outstring.append("[ ");
+  for(int i = 0; i < numberOfButtons; i++){
+    outstring.push_back(lookup(output ->solution[i]));
+    if(i != numberOfButtons - 1){
+      outstring.push_back(',');
+    }
+  }
+  outstring.append(" ]");
+  CenterString(outstring);
 }
 
 /* will display each node untill it reaches the end */
 void Display_List(listPtr start_ptr, int count){
-  listPtr temp1;
   if(empty(start_ptr)){
     string outString;
     outString.append("* the Stack is empty! *");
@@ -524,9 +554,13 @@ void Display_List(listPtr start_ptr, int count){
     CenterString(string(outString.length(),'*'));
   }
   else{
-    displayHeadder();
-    displayCount(count);
-    temp1 = start_ptr;
+    string outstring;
+    CenterString("solution Stack");
+    outstring.append("found ");
+    outstring.append(to_string(count));
+    outstring.append(" Solutions");
+    CenterString(outstring);
+    listPtr temp1 = start_ptr;
     do {
       // Display details for what temp points to
       displayInfo(temp1);
@@ -536,13 +570,49 @@ void Display_List(listPtr start_ptr, int count){
   }
 }
 
-void CopyNodeInfo(listPtr &destination, listPtr Source){
-  destination = new listNode; //make new node
-  *destination = *Source;  //store information being passed to function
-  destination ->nxt = NULL;
+/*  returns the sum of the button pressed in solution node  */
+short getSum(listPtr temp){
+  short sum = 0;
+  for(short i = 0; i < numberOfButtons; i ++){
+    sum += temp ->solution[i];
+  }
+  return sum;
 }
 
-/* gets information for ans sets up pointers for new node */
+/*  will display each node untill it reaches the end  */
+void Display_Smallest(listPtr start_ptr){
+  if(empty(start_ptr)){
+    string outString;
+    outString.append("* the Stack is empty! *");
+    CenterString(string(outString.length(),'*'));
+    CenterString(outString);
+    CenterString(string(outString.length(),'*'));
+  }
+  else{
+    CenterString("Solution with least amount of presses");
+    listPtr temp1 = start_ptr, temp2 = start_ptr;
+    //get sum of first node and save it
+    short min = getSum(temp2);
+    while (temp1 ->nxt != NULL){
+      // Move to next node (if present)
+      temp1 = temp1 ->nxt;
+      //get sum of next node
+      short sum = getSum(temp1);
+      // Check to see if the sum of next node it less than previous
+      if(sum < min){
+        //if it is set the
+        min = sum;
+        temp2 = temp1;
+      }
+    }
+    displayInfo(temp2);
+    CenterString(to_string(min));
+    CenterString("with Presses");
+  }
+}
+
+
+/*  gets information for ans sets up pointers for new node  */
 void createlistNode(listPtr &temp1, short solution[numberOfButtons]){
   temp1 = new listNode;
   for(int i = 0; i < numberOfButtons; i++){
@@ -601,6 +671,7 @@ void purge_List(listPtr &start_ptr){
 
 // ROTER FUNCTIONS
 
+/*  returns sum of all deviation from 0  */
 short checkRoters(short roters[numberOfRoters]){
   short sum = 0;
   for(short i = 0; i < numberOfRoters; i++){
@@ -609,24 +680,17 @@ short checkRoters(short roters[numberOfRoters]){
   return(sum);
 }
 
+/*  pauses execution for x milliseconds  */
 void sleep(int delay){
   this_thread::sleep_for(chrono::milliseconds(delay));
 }
 
-void randomiseEffects(short roters[numberOfRoters],effects &effects){
-  for(short i = 0; i < numberOfRoters; i++){
-    //clear any previous rotter settup because not doing so may create an unsolvable puzzle
-    roters[i] = 0;
-    for(short j = 0; j <numberOfButtons; j++){
-      effects.change[i][j] = rand() % 3 - 1;
-    }
-  }
-}
-
+/*  visually displays both effects and the roters  */
 void displayPuzzle(short roters[numberOfRoters], effects &effects){
   printLine('=');
   printLine(' ');
 
+  //X axis...
   //x axis label
   string xAxis = "   Button ";
   for(short j = 0; j < numberOfButtons; j++){
@@ -634,16 +698,13 @@ void displayPuzzle(short roters[numberOfRoters], effects &effects){
     xAxis.append(to_string(j + 1));
     xAxis.push_back(']');
   }
-
   xAxis.append("  State ");
-
   for(short j = 0; j < numberOfStates; j++){
     xAxis.append(to_string(j + 1));
     if(j != numberOfStates - 1){
       xAxis.push_back(' ');
     }
   }
-
   LeftString(xAxis);
 
   // For each roter...
@@ -651,12 +712,13 @@ void displayPuzzle(short roters[numberOfRoters], effects &effects){
     //start string
     string outString;
 
+    //Y axis
+
     //y axis label
     //button effects
     outString.append("Roter (");
     outString.append(to_string(i + 1));
     outString.append(") ");
-
 
     //button effects
     for(short j = 0; j < numberOfButtons; j++){
@@ -688,6 +750,7 @@ void displayPuzzle(short roters[numberOfRoters], effects &effects){
   }
 }
 
+/*  visually displays the effects with a selector */
 void displayEffects(effects &effects, short x, short y){
   printLine('=');
   printLine(' ');
@@ -736,7 +799,7 @@ void displayEffects(effects &effects, short x, short y){
   }
 }
 
-
+/*  visually displays the roters with a selector  */
 void displayRoters(short roters[numberOfRoters], short y){
   printLine('=');
   printLine(' ');
@@ -770,7 +833,8 @@ void displayRoters(short roters[numberOfRoters], short y){
   }
 }
 
-void button(short roters[numberOfRoters], effects effects,short choice){
+/*  uses effects to change the roter values as if a button was pressed */
+void button(short roters[numberOfRoters], effects effects, short choice){
   for(short i = 0; i < numberOfRoters; i++){
     roters[i] += effects.change[i][choice];
     if(roters[i] < 0){
@@ -780,25 +844,82 @@ void button(short roters[numberOfRoters], effects effects,short choice){
   }
 }
 
-void scrambleRoters(short roters[numberOfRoters], effects effects){
+/*  randomises the effects and sets roters to 0   */
+void randomiseEffects(short roters[numberOfRoters],effects &effects){
   //resets values to 0
+  resetRoters(roters);
   for(short i = 0; i < numberOfRoters; i++){
-    roters[i] = 0;
-    for(short j = 0; j < scrambleamount; j++){
-      button(roters,effects,rand() % numberOfButtons);
+    //clear any previous rotter settup because not doing so may create an unsolvable puzzle
+    for(short j = 0; j <numberOfButtons; j++){
+      printLine('=');
+      CenterString("Randomising effects");
+      displayEffects(effects,j,i);
+      sleep(delay);
+      cout << string(100,'\n');
+      effects.change[i][j] = rand() % 3 - 1;
+      printLine('=');
+      CenterString("Randomising effects");
+      displayEffects(effects,j,i);
+      sleep(delay);
+      cout << string(100,'\n');
     }
   }
 }
 
+/*  scrambles the Roters using the effects  */
+void scrambleRoters(short roters[numberOfRoters], effects effects){
+  //resets values to 0
+  resetRoters(roters);
+  for(short j = 0; j < scrambleamount; j++){
+    printLine('=');
+    CenterString("Scrambling Roters");
+    displayRoters(roters,-1);
+    sleep(delay);
+    cout << string(100,'\n');
+    button(roters,effects,rand() % numberOfButtons);
+    printLine('=');
+    CenterString("Scrambling Roters");
+    displayRoters(roters,-1);
+    sleep(delay);
+    cout << string(100,'\n');
+  }
+}
 
+/*  sets effects to 0  */
+void resetEffects     (effects &effects){
+  for(short i = 0; i < numberOfRoters; i++){
+    for(short j = 0; j < numberOfButtons; j++){
+      printLine('=');
+      CenterString("Clearing Roters");
+      displayEffects(effects,j,i);
+      sleep(delay);
+      cout << string(100,'\n');
+      effects.change[i][j] = 0;
+      printLine('=');
+      CenterString("Clearing Roters");
+      displayEffects(effects,j,i);
+      sleep(delay);
+      cout << string(100,'\n');
+    }
+  }
+}
 
-
-
-
-
-
-
-
+/*  sets roters to 0  */
+void resetRoters      (short roters[numberOfRoters]){
+  for(short i = 0; i < numberOfRoters; i++){
+    printLine('=');
+    CenterString("Clearing Roters");
+    displayRoters(roters,i);
+    sleep(delay);
+    cout << string(100,'\n');
+    roters[i] = 0;
+    printLine('=');
+    CenterString("Clearing Roters");
+    displayRoters(roters,i);
+    sleep(delay);
+    cout << string(100,'\n');
+  }
+}
 
 
 //GRAPHICAL FUNCTIONS THEY DO NOOOTHINNGGGGG
